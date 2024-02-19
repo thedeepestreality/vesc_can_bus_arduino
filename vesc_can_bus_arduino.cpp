@@ -4,13 +4,13 @@
 
 MCP_CAN CAN0(10);                               // Set CS to pin 10
 
-void CAN::initialize() {
+void VescCan::initialize() {
   CAN0.begin(MCP_ANY, CAN_250KBPS, MCP_8MHZ);
   CAN0.setMode(MCP_NORMAL);                     // Set operation mode to normal so the MCP2515 sends acks to received data.
   //SET PINMODE DONE IN MAIN // pinMode(CAN0_INT, INPUT);                            // Configuring pin for /INT input
 }
 
-void CAN::spin() {
+void VescCan::spin() {
   get_frame();
 
   if (rxId == 0x8000090A) { //
@@ -47,7 +47,7 @@ void CAN::spin() {
   // print_raw_can_data()  // uncomment to see raw can messages
 }
 
-void CAN::print_raw_can_data() {
+void VescCan::print_raw_can_data() {
   int len = 8;
   sprintf(msgString, "Standard ID: 0x%.3lX       DLC: %1d  Data:", rxId, len);
   Serial.print(msgString);
@@ -58,7 +58,7 @@ void CAN::print_raw_can_data() {
   Serial.println();
 }
 
-float CAN::process_data_frame_vesc(char datatype, unsigned char byte1, unsigned char byte2) {
+float VescCan::process_data_frame_vesc(char datatype, unsigned char byte1, unsigned char byte2) {
   char receivedByte[4], *p;
   sprintf(receivedByte, "%02X%02X", byte1, byte2);
   float output = hex2int(receivedByte);
@@ -74,40 +74,39 @@ float CAN::process_data_frame_vesc(char datatype, unsigned char byte1, unsigned 
   return output;
 }
 
-int CAN::hex2int(char buf[])
+int VescCan::hex2int(char buf[])
 {
   return (short) strtol(buf, NULL, 16);
 }
 
-void CAN::vesc_set_duty(float duty) {
+void VescCan::int2hex(uint32_t val, uint8_t buf[])
+{
+  buf[0] = (val >> 24) & 0xFF;
+  buf[1] = (val >> 16) & 0xFF;
+  buf[2] = (val >>  8) & 0xFF;
+  buf[3] = val & 0xFF;
+}
+
+void VescCan::vesc_set_duty(float duty) {
   uint32_t set_value = duty * 100000;
   uint8_t buffer[4];
-  buffer[0] = (set_value >> 24) & 0xFF;
-  buffer[1] = (set_value >> 16) & 0xFF;
-  buffer[2] = (set_value  >> 8  )  & 0xFF;
-  buffer[3] = set_value & 0xFF;
-  byte sndStat = CAN0.sendMsgBuf(0x0000000A, 1, 4, buffer);
+  int2hex(set_value, buffer);
+  byte sndStat = CAN0.sendMsgBuf(0x00000000 | _id, 1, 4, buffer);
 }
 
-void CAN::vesc_set_current(float current) {
+void VescCan::vesc_set_current(float current) {
   uint32_t set_value = current * 1000;
   uint8_t buffer[4];
-  buffer[0] = (set_value >> 24) & 0xFF;
-  buffer[1] = (set_value >> 16) & 0xFF;
-  buffer[2] = (set_value  >> 8  )  & 0xFF;
-  buffer[3] = set_value & 0xFF;
-  byte sndStat = CAN0.sendMsgBuf(0x0000010A, 1, 4, buffer);
+  int2hex(set_value, buffer);
+  byte sndStat = CAN0.sendMsgBuf(0x00000100 | _id, 1, 4, buffer);
 }
 
-void CAN::vesc_set_erpm(float erpm) {
+void VescCan::vesc_set_erpm(float erpm) {
   uint32_t set_value = erpm;
   uint8_t buffer[4];
-  buffer[0] = (set_value >> 24) & 0xFF;
-  buffer[1] = (set_value >> 16) & 0xFF;
-  buffer[2] = (set_value  >> 8  )  & 0xFF;
-  buffer[3] = set_value & 0xFF;
-  byte sndStat = CAN0.sendMsgBuf(0x0000030A, 1, 4, buffer);
+  int2hex(set_value, buffer);
+  byte sndStat = CAN0.sendMsgBuf(0x00000300 | _id, 1, 4, buffer);
 }
-void CAN::get_frame() {
+void VescCan::get_frame() {
   CAN0.readMsgBuf(&rxId, &len, rxBuf);      // Read data: len = data length, buf = data byte(s)
 }
