@@ -13,7 +13,7 @@ void VescCan::initialize() {
 void VescCan::spin() {
   get_frame();
 
-  if (rxId == 0x8000090A) { //
+  if (rxId == addr2eid(0x80000900)) { //
     dutyCycleNow = process_data_frame_vesc('D', rxBuf[6], rxBuf[7]);
     avgMotorCurrent = process_data_frame_vesc('C', rxBuf[4], rxBuf[5]);
     unsigned char erpmvals[4];
@@ -25,7 +25,7 @@ void VescCan::spin() {
 
     //need to add in the rpm conversion function for 4 byte values
   }
-  if (rxId == 0x80000F0A) {
+  if (rxId == addr2eid(0x80000F00)) {
     unsigned char WHvals[4];
     WHvals[0] = rxBuf[3];
     WHvals[1] = rxBuf[2];
@@ -33,12 +33,12 @@ void VescCan::spin() {
     WHvals[3] = rxBuf[0];
     WattHours = *(long *)WHvals;
   }
-  if (rxId == 0x8000100A) { //
+  if (rxId == addr2eid(0x80001000)) { //
     tempFET = process_data_frame_vesc('F', rxBuf[0], rxBuf[1]);
     tempMotor = process_data_frame_vesc('T', rxBuf[2], rxBuf[3]);
     avgInputCurrent = process_data_frame_vesc('I', rxBuf[4], rxBuf[5]);
   }
-  if (rxId == 0x80001B0A) {
+  if (rxId == addr2eid(0x80001B00)) {
     char receivedByte[4], *p;
     sprintf(receivedByte, "%02X%02X", rxBuf[4], rxBuf[5]);
     inpVoltage = hex2int(receivedByte) * 0.1;
@@ -87,25 +87,30 @@ void VescCan::int2hex(uint32_t val, uint8_t buf[])
   buf[3] = val & 0xFF;
 }
 
+uint32_t VescCan::addr2eid(uint32_t addr)
+{
+  return addr | _id;
+}
+
 void VescCan::vesc_set_duty(float duty) {
   uint32_t set_value = duty * 100000;
   uint8_t buffer[4];
   int2hex(set_value, buffer);
-  byte sndStat = CAN0.sendMsgBuf(0x00000000 | _id, 1, 4, buffer);
+  byte sndStat = CAN0.sendMsgBuf(addr2eid(0x00000000), 1, 4, buffer);
 }
 
 void VescCan::vesc_set_current(float current) {
   uint32_t set_value = current * 1000;
   uint8_t buffer[4];
   int2hex(set_value, buffer);
-  byte sndStat = CAN0.sendMsgBuf(0x00000100 | _id, 1, 4, buffer);
+  byte sndStat = CAN0.sendMsgBuf(addr2eid(0x00000100), 1, 4, buffer);
 }
 
 void VescCan::vesc_set_erpm(float erpm) {
   uint32_t set_value = erpm;
   uint8_t buffer[4];
   int2hex(set_value, buffer);
-  byte sndStat = CAN0.sendMsgBuf(0x00000300 | _id, 1, 4, buffer);
+  byte sndStat = CAN0.sendMsgBuf(addr2eid(0x00000300), 1, 4, buffer);
 }
 void VescCan::get_frame() {
   CAN0.readMsgBuf(&rxId, &len, rxBuf);      // Read data: len = data length, buf = data byte(s)

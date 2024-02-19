@@ -8,9 +8,10 @@ private:
     const uint8_t _id;
     int hex2int(char buf[]);
     void int2hex(uint32_t val, uint8_t buf[]);
+    uint32_t addr2eid(uint32_t addr);
     
 public:
-    long unsigned int rxId;
+    uint32_t rxId;
     unsigned char len = 0;
     unsigned char rxBuf[8];
     char msgString[128]; // Array to store serial string
